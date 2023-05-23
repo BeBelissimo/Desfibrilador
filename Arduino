@@ -1,0 +1,77 @@
+#include <SD.h>
+
+const int chipSelect = 4;  // Pino CS do módulo SD
+
+// Variáveis para detecção de pico R e cálculo de BPM
+float threshold = 0;  
+unsigned long lastPeakTime = 0;  // Tempo do último pico R em milissegundos
+float bpm = 0;  // Valor de BPM calculado
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Inicialização do módulo SD
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Falha ao inicializar o cartão SD");
+    return;
+  }
+
+  // Leitura do arquivo de texto do sinal de ECG
+  File file = SD.open("ecg_signal.txt");
+  if (!file) {
+    Serial.println("Desculpa, não consegui abrir o arquivo");
+    return;
+  }
+
+  // ele encontra o valor máx do ECG, ou seja, o pico R
+  float max_value = 0;
+  while (file.available()) {
+    float value = file.parseFloat();
+    if (abs(value) > max_value) {
+      max_value = abs(value);
+    }
+  }
+  file.close();
+  
+  // Define o limite como 80% do valor máximo
+  threshold = 0.8 * max_value;
+
+  // Detecção de pico R e cálculo de BPM
+  file = SD.open("ecg_signal.txt");
+  while (file.available()) {
+    int value = file.parseInt();  // Lê um valor inteiro do arquivo
+    detectPeak(value);
+  }
+
+  // Fecha o arquivo
+  file.close();
+
+  Serial.print("BPM: ");
+  Serial.println(bpm);
+}
+
+void loop() {
+  
+}
+
+void detectPeak(int value) {
+ 
+  if (value > threshold) {
+      // se o valor for maior que o limite, indica que esta no pico R
+    
+    unsigned long currentTime = millis();
+    
+    unsigned long peakInterval = currentTime - lastPeakTime; //compara o tempo entre picos R
+    
+    if (peakInterval > 120 && bpm > 100) {
+        
+      // Ativa o pino com 5V do desfibrilador
+      digitalWrite(5, HIGH);
+      
+      delay(1000); 
+      
+      digitalWrite(5, LOW); // depois de 1000ms desliga o pino e para de carregar
+    }
+    lastPeakTime = currentTime;
+  }
+}
