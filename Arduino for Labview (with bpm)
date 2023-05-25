@@ -1,0 +1,68 @@
+#include <SD.h>
+
+const int pinDesfibrilador = 13;  // Pino 
+
+// Variáveis para detecção de pico R e cálculo de BPM
+float threshold = 0;  
+unsigned long lastPeakTime = 0;  // Tempo do último pico R em milissegundos
+float bpm = 0;  // Valor de BPM calculado
+
+void setup() {
+  Serial.begin(9600);
+  
+  if(Serial.available()){
+        mySignal = Serial.readString();
+        Serial.println(mySignal);
+    }
+  
+  // ele encontra o valor máx do ECG, ou seja, o pico R
+  float max_value = 0;
+  while (mySignal.available()) {
+    float value = mySignal.parseFloat();
+    if (abs(value) > max_value) {
+      max_value = abs(value);
+    }
+  }
+  file.close();
+  
+  // Define o limite como 80% do valor máximo
+  threshold = 0.8 * max_value;
+
+  // Detecção de pico R e cálculo de BPM
+  while (mySignal.available()) {
+    float value = mySignal.parseFloat();  // Lê um valor inteiro do arquivo
+    detectPeak(value);
+  }
+
+  // Fecha o arquivo
+  file.close();
+  
+}
+
+void loop() {
+  
+}
+
+void detectPeak(float value) {
+ 
+  if (value > threshold) {
+      // se o valor for maior que o limite, indica que esta no pico R
+    
+    unsigned long currentTime = millis();
+    
+    unsigned long peakInterval = currentTime - lastPeakTime; //compara o tempo entre picos R
+    
+    bpm = 60/peakInternal;
+    
+    if (peakInterval > 120 && bpm > 100) {
+        
+      // Ativa o pino com 5V do desfibrilador
+      digitalWrite(13, HIGH);
+      
+      delay(1000); 
+      
+      digitalWrite(13, LOW); // depois de 1000ms desliga o pino e para de carregar
+    }
+    lastPeakTime = currentTime;
+  }
+}
